@@ -189,7 +189,7 @@ class FloatingAutoClicker:
                 self.running.clear()
                 break
             delay = 1.0 / max(1, min(MAX_CPS, self.cps.get()))
-            self.running.wait(max(0, delay - (time.perf_counter() - began)))
+            time.sleep(max(0, delay - (time.perf_counter() - began)))
         if not self.closing:
             self.root.after(0, lambda: self.status.set("DETENIDO"))
 
