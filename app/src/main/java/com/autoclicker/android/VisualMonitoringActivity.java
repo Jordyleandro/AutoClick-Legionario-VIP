@@ -182,6 +182,9 @@ public class VisualMonitoringActivity extends Activity {
         service.putExtra(VisualMonitoringService.EXTRA_TEMPLATE_URI, templateUri.toString());
         service.putExtra(VisualMonitoringService.EXTRA_INTERVAL, intervalMs);
         service.putExtra(VisualMonitoringService.EXTRA_THRESHOLD, threshold);
+        getSharedPreferences("visual_monitor_state", MODE_PRIVATE).edit()
+                .putBoolean("running", true).putBoolean("present", false)
+                .putInt("x", -1).putInt("y", -1).apply();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(service);
         else startService(service);
         permissionData = null;
@@ -195,6 +198,9 @@ public class VisualMonitoringActivity extends Activity {
         Intent stop = new Intent(this, VisualMonitoringService.class);
         stop.setAction(VisualMonitoringService.ACTION_STOP);
         startService(stop);
+        getSharedPreferences("visual_monitor_state", MODE_PRIVATE).edit()
+                .putBoolean("running", false).putBoolean("present", false)
+                .putInt("x", -1).putInt("y", -1).apply();
         monitoringRunning = false;
         targetPresent = false;
         matchX = matchY = -1;
