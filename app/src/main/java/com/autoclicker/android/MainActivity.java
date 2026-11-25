@@ -17,12 +17,12 @@ public class MainActivity extends Activity {
         layout.setPadding(30, 42, 30, 30);
 
         TextView title = new TextView(this);
-        title.setText("LEGIONARIO VIP 6.6");
+        title.setText("LEGIONARIO VIP 6.7");
         title.setTextSize(26);
         layout.addView(title);
 
         TextView info = new TextView(this);
-        info.setText("\nVersión 6.6 basada en la 6.5. Se conservan AutoClick, Flooder, macros, OCR y captura puntual.");
+        info.setText("\nVersión 6.7: panel flotante móvil, controles independientes y punto de coordenadas X-Y. Se conservan las funciones anteriores.");
         layout.addView(info);
 
         Button config = new Button(this);
@@ -60,6 +60,14 @@ public class MainActivity extends Activity {
         overlay.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:" + getPackageName()))));
         layout.addView(overlay);
+
+        Button point = new Button(this);
+        point.setText("MOSTRAR PUNTO FLOTANTE X-Y");
+        point.setOnClickListener(v -> {
+            if (Settings.canDrawOverlays(this)) startService(new Intent(this, CoordinatePointService.class));
+            else startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
+        });
+        layout.addView(point);
 
         Button start = new Button(this);
         start.setText("ABRIR PANEL FLOTANTE");
