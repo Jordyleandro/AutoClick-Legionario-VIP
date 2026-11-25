@@ -128,7 +128,7 @@ public class VisualMonitoringService extends Service {
         NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "Vigilancia visual", NotificationManager.IMPORTANCE_LOW);
+                    CHANNEL_ID, "Vigilancia visual", NotificationManager.IMPORTANCE_DEFAULT);
             channel.setDescription("Indica cuándo la vigilancia visual está activa.");
             manager.createNotificationChannel(channel);
         }
