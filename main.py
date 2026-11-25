@@ -29,6 +29,9 @@ class FloatingAutoClicker:
         self.click_count = 0
         self.compact = False
         self.drag_offset = (0, 0)
+        self.panel_bounds = (80, 100, 290, 310)
+        self.cps_value = 10
+        self.button_value = "Izquierdo"
 
         self.cps = tk.IntVar(value=10)
         self.button = tk.StringVar(value="Izquierdo")
@@ -88,6 +91,7 @@ class FloatingAutoClicker:
                     activeforeground="white", relief="flat", highlightthickness=0)
         menu["menu"].config(bg=COLORS["panel"], fg=COLORS["text"])
         menu.pack(side="right")
+        self.button.trace_add("write", lambda *_: setattr(self, "button_value", self.button.get()))
 
         buttons = tk.Frame(self.body, bg=COLORS["bg"])
         buttons.pack(fill="x", pady=(2, 9))
@@ -126,9 +130,12 @@ class FloatingAutoClicker:
         x = event.x_root - self.drag_offset[0]
         y = event.y_root - self.drag_offset[1]
         self.root.geometry(f"+{x}+{y}")
+        width, height = (210, 38) if self.compact else (290, 310)
+        self.panel_bounds = (x, y, width, height)
 
     def _speed_changed(self, _value=None):
-        self.speed_text.config(text=f"{self.cps.get()} CPS")
+        self.cps_value = int(self.cps.get())
+        self.speed_text.config(text=f"{self.cps_value} CPS")
 
     def minimize(self):
         if self.compact:
@@ -136,6 +143,7 @@ class FloatingAutoClicker:
         self.compact = True
         self.body.pack_forget()
         self.root.geometry("210x38")
+        self.panel_bounds = (self.root.winfo_x(), self.root.winfo_y(), 210, 38)
         self.header.winfo_children()[0].config(text="  LEGIONARIO  •  MOSTRAR")
         self.header.winfo_children()[0].bind("<Button-1>", lambda _e: self.restore())
 
@@ -144,6 +152,7 @@ class FloatingAutoClicker:
             return
         self.compact = False
         self.root.geometry("290x310")
+        self.panel_bounds = (self.root.winfo_x(), self.root.winfo_y(), 290, 310)
         self.header.winfo_children()[0].config(text="  LEGIONARIO  •  AUTOCLICK")
         self.header.winfo_children()[0].bind("<Button-1>", self._drag_start)
         self.header.winfo_children()[0].bind("<B1-Motion>", self._drag)
@@ -177,10 +186,10 @@ class FloatingAutoClicker:
             began = time.perf_counter()
             try:
                 x, y = self.mouse.position
-                if not (PAUSE_OVER_PANEL and
-                        self.root.winfo_rootx() <= x <= self.root.winfo_rootx() + self.root.winfo_width() and
-                        self.root.winfo_rooty() <= y <= self.root.winfo_rooty() + self.root.winfo_height()):
-                    btn = mouse.Button.left if self.button.get() == "Izquierdo" else mouse.Button.right
+                px, py, pw, ph = self.panel_bounds
+                over_panel = px <= x <= px + pw and py <= y <= py + ph
+                if not (PAUSE_OVER_PANEL and over_panel):
+                    btn = mouse.Button.left if self.button_value == "Izquierdo" else mouse.Button.right
                     self.mouse.click(btn, 1)
                     self.click_count += 1
                     count = self.click_count
@@ -188,7 +197,7 @@ class FloatingAutoClicker:
             except Exception:
                 self.running.clear()
                 break
-            delay = 1.0 / max(1, min(MAX_CPS, self.cps.get()))
+            delay = 1.0 / max(1, min(MAX_CPS, self.cps_value))
             time.sleep(max(0, delay - (time.perf_counter() - began)))
         if not self.closing:
             self.root.after(0, lambda: self.status.set("DETENIDO"))
