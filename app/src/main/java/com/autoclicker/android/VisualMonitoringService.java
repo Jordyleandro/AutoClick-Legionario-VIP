@@ -45,6 +45,7 @@ public class VisualMonitoringService extends Service {
     public static final String EXTRA_Y = "monitor_y";
     public static final String EXTRA_SCORE = "monitor_score";
     public static final String EXTRA_MESSAGE = "monitor_message";
+    public static final String EXTRA_RUNNING = "monitor_running";
 
     private static final String CHANNEL_ID = "legionario_visual_monitor";
     private static final int NOTIFICATION_ID = 7306;
@@ -266,6 +267,7 @@ public class VisualMonitoringService extends Service {
 
     private void sendState(boolean present, int x, int y, double score, String message) {
         getSharedPreferences("visual_monitor_state", MODE_PRIVATE).edit()
+                .putBoolean("running", active)
                 .putBoolean("present", present)
                 .putInt("x", x)
                 .putInt("y", y)
@@ -274,6 +276,7 @@ public class VisualMonitoringService extends Service {
                 .apply();
         Intent event = new Intent(ACTION_STATE);
         event.setPackage(getPackageName());
+        event.putExtra(EXTRA_RUNNING, active);
         event.putExtra(EXTRA_PRESENT, present);
         event.putExtra(EXTRA_X, x);
         event.putExtra(EXTRA_Y, y);
