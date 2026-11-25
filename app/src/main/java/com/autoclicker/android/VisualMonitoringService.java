@@ -61,6 +61,7 @@ public class VisualMonitoringService extends Service {
     private boolean active;
     private boolean processing;
     private boolean targetPresent;
+    private boolean stopping;
     private int matchX = -1, matchY = -1;
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
@@ -106,7 +107,7 @@ public class VisualMonitoringService extends Service {
             if (projection == null) throw new IllegalStateException("Android no entregó MediaProjection.");
             projection.registerCallback(new MediaProjection.Callback() {
                 @Override public void onStop() {
-                    stopMonitoring();
+                    if (!stopping) stopMonitoring();
                 }
             }, handler);
             createDisplay();
@@ -175,18 +176,25 @@ public class VisualMonitoringService extends Service {
             lastSampleAt = now;
             processing = true;
             Bitmap frame = imageToBitmap(image);
-            if (frame == null) {
+            Bitmap templateCopy = template.copy(Bitmap.Config.ARGB_8888, false);
+            if (frame == null || templateCopy == null) {
+                if (frame != null) frame.recycle();
+                if (templateCopy != null) templateCopy.recycle();
                 processing = false;
                 return;
             }
             worker.execute(() -> {
-                TemplateMatcher.Result result;
+                TemplateMatcher.Result result = new TemplateMatcher.Result(0, -1, -1, 0, 0);
                 try {
-                    result = TemplateMatcher.find(frame, template);
+                    result = TemplateMatcher.find(frame, templateCopy);
+                } catch (Exception ignored) {
+                    // La siguiente muestra volverá a intentarlo.
                 } finally {
                     frame.recycle();
+                    templateCopy.recycle();
                 }
-                handler.post(() -> handleMatch(result));
+                TemplateMatcher.Result completed = result;
+                handler.post(() -> handleMatch(completed));
             });
         } catch (Exception e) {
             processing = false;
@@ -218,8 +226,8 @@ public class VisualMonitoringService extends Service {
         if (!active || result == null) return;
         boolean found = result.score >= threshold;
         if (found) {
-            matchX = result.x + template.getWidth() / 2;
-            matchY = result.y + template.getHeight() / 2;
+            matchX = result.x + result.width / 2;
+            matchY = result.y + result.height / 2;
         }
         if (found != targetPresent) {
             targetPresent = found;
@@ -275,6 +283,8 @@ public class VisualMonitoringService extends Service {
     }
 
     private void stopMonitoring() {
+        if (stopping) return;
+        stopping = true;
         active = false;
         processing = false;
         sendState(false, -1, -1, 0, "Vigilancia detenida.");
@@ -286,9 +296,10 @@ public class VisualMonitoringService extends Service {
             try { reader.close(); } catch (Exception ignored) {}
             reader = null;
         }
-        if (projection != null) {
-            try { projection.stop(); } catch (Exception ignored) {}
-            projection = null;
+        MediaProjection oldProjection = projection;
+        projection = null;
+        if (oldProjection != null) {
+            try { oldProjection.stop(); } catch (Exception ignored) {}
         }
         if (template != null && !template.isRecycled()) {
             template.recycle();
