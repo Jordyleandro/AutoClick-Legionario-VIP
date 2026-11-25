@@ -17,12 +17,12 @@ public class MainActivity extends Activity {
         layout.setPadding(30, 42, 30, 30);
 
         TextView title = new TextView(this);
-        title.setText("LEGIONARIO VIP");
+        title.setText("LEGIONARIO VIP 6.6");
         title.setTextSize(26);
         layout.addView(title);
 
         TextView info = new TextView(this);
-        info.setText("\\nReconstrucción Android basada exclusivamente en AutoClick Legionario VIP.\\n\\nConfigura primero los parámetros y permisos. Las coordenadas deben calibrarse en tu pantalla.\\n");
+        info.setText("\nVersión 6.6 basada en la 6.5. Se conservan AutoClick, Flooder, macros, OCR y captura puntual.");
         layout.addView(info);
 
         Button config = new Button(this);
@@ -36,7 +36,7 @@ public class MainActivity extends Activity {
         layout.addView(macros);
 
         Button capture = new Button(this);
-        capture.setText("CAPTURA DE PANTALLA");
+        capture.setText("CAPTURA DE PANTALLA Y OCR");
         capture.setOnClickListener(v -> startActivity(new Intent(this, ScreenCaptureActivity.class)));
         layout.addView(capture);
 
@@ -44,6 +44,11 @@ public class MainActivity extends Activity {
         visual.setText("RECONOCIMIENTO VISUAL POR PLANTILLA");
         visual.setOnClickListener(v -> startActivity(new Intent(this, ImageRecognitionActivity.class)));
         layout.addView(visual);
+
+        Button monitor = new Button(this);
+        monitor.setText("NUEVO: VIGILANCIA VISUAL CONTINUA 6.6");
+        monitor.setOnClickListener(v -> startActivity(new Intent(this, VisualMonitoringActivity.class)));
+        layout.addView(monitor);
 
         Button accessibility = new Button(this);
         accessibility.setText("ACTIVAR SERVICIO DE ACCESIBILIDAD");
