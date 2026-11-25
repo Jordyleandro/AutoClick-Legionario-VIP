@@ -27,6 +27,7 @@ public class VisualMonitoringActivity extends Activity {
     private int permissionResult;
     private int matchX = -1, matchY = -1;
     private boolean targetPresent;
+    private boolean monitoringRunning;
     private TextView status, intervalLabel, thresholdLabel;
     private Button startButton, stopButton, tapButton;
     private SeekBar intervalBar, thresholdBar;
@@ -36,7 +37,8 @@ public class VisualMonitoringActivity extends Activity {
 
     private final BroadcastReceiver stateReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
-            applyState(intent.getBooleanExtra(VisualMonitoringService.EXTRA_PRESENT, false),
+            applyState(intent.getBooleanExtra(VisualMonitoringService.EXTRA_RUNNING, false),
+                    intent.getBooleanExtra(VisualMonitoringService.EXTRA_PRESENT, false),
                     intent.getIntExtra(VisualMonitoringService.EXTRA_X, -1),
                     intent.getIntExtra(VisualMonitoringService.EXTRA_Y, -1),
                     intent.getDoubleExtra(VisualMonitoringService.EXTRA_SCORE, 0),
@@ -101,6 +103,7 @@ public class VisualMonitoringActivity extends Activity {
 
         stopButton = new Button(this);
         stopButton.setText("DETENER VIGILANCIA");
+        stopButton.setEnabled(false);
         stopButton.setOnClickListener(v -> stopMonitoring());
         page.addView(stopButton);
 
@@ -182,6 +185,9 @@ public class VisualMonitoringActivity extends Activity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(service);
         else startService(service);
         permissionData = null;
+        monitoringRunning = true;
+        startButton.setEnabled(false);
+        stopButton.setEnabled(true);
         status.setText("Vigilancia iniciándose. La búsqueda se repetirá cada " + intervalMs + " ms.");
     }
 
@@ -189,17 +195,23 @@ public class VisualMonitoringActivity extends Activity {
         Intent stop = new Intent(this, VisualMonitoringService.class);
         stop.setAction(VisualMonitoringService.ACTION_STOP);
         startService(stop);
+        monitoringRunning = false;
         targetPresent = false;
         matchX = matchY = -1;
+        startButton.setEnabled(true);
+        stopButton.setEnabled(false);
         tapButton.setEnabled(false);
         status.setText("Solicitud de detención enviada.");
     }
 
-    private void applyState(boolean present, int x, int y, double score, String message) {
-        targetPresent = present;
+    private void applyState(boolean running, boolean present, int x, int y, double score, String message) {
+        monitoringRunning = running;
+        startButton.setEnabled(!running);
+        stopButton.setEnabled(running);
+        targetPresent = running && present;
         matchX = x;
         matchY = y;
-        tapButton.setEnabled(present && x >= 0 && y >= 0);
+        tapButton.setEnabled(running && present && x >= 0 && y >= 0);
         String text = message == null ? "Estado actualizado." : message;
         if (present) {
             text += String.format(Locale.getDefault(),
@@ -212,8 +224,9 @@ public class VisualMonitoringActivity extends Activity {
     private void refreshSavedState() {
         android.content.SharedPreferences prefs =
                 getSharedPreferences("visual_monitor_state", MODE_PRIVATE);
+        boolean running = prefs.getBoolean("running", false);
         boolean present = prefs.getBoolean("present", false);
-        applyState(present, prefs.getInt("x", -1), prefs.getInt("y", -1),
+        applyState(running, present, prefs.getInt("x", -1), prefs.getInt("y", -1),
                 prefs.getFloat("score", 0), prefs.getString("message", "Estado recuperado."));
     }
 
