@@ -6,11 +6,13 @@ import android.graphics.Bitmap;
 final class TemplateMatcher {
     static final class Result {
         final double score;
-        final int x, y;
-        Result(double score, int x, int y) {
+        final int x, y, width, height;
+        Result(double score, int x, int y, int width, int height) {
             this.score = score;
             this.x = x;
             this.y = y;
+            this.width = width;
+            this.height = height;
         }
     }
 
@@ -19,7 +21,7 @@ final class TemplateMatcher {
                 || template.getWidth() < 12 || template.getHeight() < 12
                 || template.getWidth() > screen.getWidth()
                 || template.getHeight() > screen.getHeight()) {
-            return new Result(0, -1, -1);
+            return new Result(0, -1, -1, 0, 0);
         }
 
         final int samples = 8;
@@ -32,7 +34,7 @@ final class TemplateMatcher {
             }
         }
 
-        Result best = new Result(-1, 0, 0);
+        Result best = new Result(-1, 0, 0, template.getWidth(), template.getHeight());
         double[] scales = {1.0, 0.9, 1.1};
         for (double scale : scales) {
             int w = (int) Math.round(template.getWidth() * scale);
@@ -74,7 +76,7 @@ final class TemplateMatcher {
                     }
                 }
                 double score = 100.0 * (1.0 - error / (double) (samples * samples * 765));
-                if (score > local.score) local = new Result(score, left, top);
+                if (score > local.score) local = new Result(score, left, top, w, h);
             }
         }
         return local;
