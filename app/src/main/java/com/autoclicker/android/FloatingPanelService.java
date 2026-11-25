@@ -7,6 +7,8 @@ import android.os.Build;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -18,9 +20,11 @@ import java.util.List;
 public class FloatingPanelService extends Service {
     private WindowManager wm;
     private LinearLayout panel;
+    private WindowManager.LayoutParams panelParams;
     private FlooderEngine flooder;
     private TextView status;
     private boolean autoclickEnabled;
+    private boolean pointVisible;
 
     @Override public void onCreate() {
         super.onCreate();
@@ -42,24 +46,48 @@ public class FloatingPanelService extends Service {
         wm = (WindowManager)getSystemService(WINDOW_SERVICE);
         panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(16, 10, 16, 10);
+        panel.setPadding(14, 8, 14, 8);
         panel.setBackgroundColor(0xEE20242A);
+
         TextView title = new TextView(this);
-        title.setText("LEGIONARIO VIP");
+        title.setText("LEGIONARIO VIP 6.7  ⋮  MOVER PANEL");
         title.setTextColor(0xFFFFFFFF);
-        title.setTextSize(17);
+        title.setTextSize(16);
+        title.setPadding(4, 8, 4, 8);
         panel.addView(title);
+        title.setOnTouchListener(new View.OnTouchListener() {
+            private float downX, downY;
+            private int startX, startY;
+            @Override public boolean onTouch(View v, MotionEvent e) {
+                if (e.getAction() == MotionEvent.ACTION_DOWN) {
+                    downX = e.getRawX(); downY = e.getRawY();
+                    startX = panelParams.x; startY = panelParams.y;
+                    return true;
+                }
+                if (e.getAction() == MotionEvent.ACTION_MOVE) {
+                    panelParams.x = Math.max(0, startX + Math.round(e.getRawX() - downX));
+                    panelParams.y = Math.max(0, startY + Math.round(e.getRawY() - downY));
+                    try { wm.updateViewLayout(panel, panelParams); } catch (Exception ignored) {}
+                    return true;
+                }
+                return e.getAction() == MotionEvent.ACTION_UP;
+            }
+        });
+
         TextView cfg = new TextView(this);
-        cfg.setText("Clic: " + LegionarioConfig.interval(this) + " ms | Burst: "
-                + LegionarioConfig.burst(this) + "\\nFlooder: "
-                + LegionarioConfig.flooderInterval(this) + " ms");
+        cfg.setText("Intervalo: " + LegionarioConfig.interval(this) + " ms | Burst: "
+                + LegionarioConfig.burst(this) + "\nPunto: X " + Math.round(LegionarioConfig.pointX(this))
+                + " / Y " + Math.round(LegionarioConfig.pointY(this)));
         cfg.setTextColor(0xFFFFFFFF);
         panel.addView(cfg);
+
         status = new TextView(this);
         status.setTextColor(0xFFB8E0B8);
+        status.setPadding(2, 5, 2, 5);
         panel.addView(status);
+
         Button startClick = new Button(this);
-        startClick.setText("INICIAR AUTOCLICK");
+        startClick.setText("INICIAR");
         startClick.setOnClickListener(v -> {
             if (AutoClickService.instance == null) {
                 Toast.makeText(this, "Activa Legionario VIP en Accesibilidad", Toast.LENGTH_SHORT).show(); return;
@@ -73,6 +101,16 @@ public class FloatingPanelService extends Service {
             updateStatus();
         });
         panel.addView(startClick);
+
+        Button stopClick = new Button(this);
+        stopClick.setText("DETENER");
+        stopClick.setOnClickListener(v -> {
+            if (AutoClickService.instance != null) AutoClickService.instance.stopClicking();
+            autoclickEnabled = false;
+            updateStatus();
+        });
+        panel.addView(stopClick);
+
         Button startFlooder = new Button(this);
         startFlooder.setText("INICIAR FLOODER");
         startFlooder.setOnClickListener(v -> {
@@ -90,32 +128,51 @@ public class FloatingPanelService extends Service {
             flooder.start(); updateStatus();
         });
         panel.addView(startFlooder);
+
         Button stop = new Button(this);
         stop.setText("DETENER TODO");
         stop.setOnClickListener(v -> stopEngines());
         panel.addView(stop);
+
+        Button showPoint = new Button(this);
+        showPoint.setText("MOSTRAR / OCULTAR PUNTO X-Y");
+        showPoint.setOnClickListener(v -> {
+            if (pointVisible) {
+                stopService(new Intent(this, CoordinatePointService.class));
+                pointVisible = false;
+            } else {
+                startService(new Intent(this, CoordinatePointService.class));
+                pointVisible = true;
+            }
+            updateStatus();
+        });
+        panel.addView(showPoint);
+
         Button close = new Button(this);
         close.setText("CERRAR PANEL");
         close.setOnClickListener(v -> stopSelf());
         panel.addView(close);
 
         int type = Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
-        WindowManager.LayoutParams p = new WindowManager.LayoutParams(
+        panelParams = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
                 type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
-        p.gravity = Gravity.TOP | Gravity.START; p.x = 20; p.y = 120;
-        wm.addView(panel, p);
+        panelParams.gravity = Gravity.TOP | Gravity.START; panelParams.x = 20; panelParams.y = 120;
+        wm.addView(panel, panelParams);
         updateStatus();
     }
 
     private void updateStatus() {
-        if (status != null) status.setText("AutoClick: " + (autoclickEnabled ? "ACTIVO" : "OFF")
-                + " | Flooder: " + (flooder != null && flooder.isRunning() ? "ACTIVO" : "OFF"));
+        if (status != null) status.setText("AutoClick: "
+                + ((AutoClickService.instance != null && AutoClickService.instance.isClicking()) ? "ACTIVO" : "DETENIDO")
+                + " | Flooder: " + (flooder != null && flooder.isRunning() ? "ACTIVO" : "DETENIDO")
+                + " | Punto: " + (pointVisible ? "VISIBLE" : "OCULTO"));
     }
     private void stopEngines() {
         if (AutoClickService.instance != null) AutoClickService.instance.stopClicking();
         if (flooder != null) flooder.stop();
-        autoclickEnabled = false; updateStatus();
+        autoclickEnabled = false;
+        updateStatus();
     }
     @Override public void onDestroy() {
         stopEngines();
