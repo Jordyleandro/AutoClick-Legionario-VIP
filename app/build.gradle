@@ -6,11 +6,10 @@ android {
         applicationId 'com.autoclicker.android'
         minSdk 26
         targetSdk 28
-        versionCode 5
-        versionName '6.5'
+        versionCode 6
+        versionName '6.6'
     }
 }
-
 
 dependencies {
     // Modelo OCR latino integrado en la app; el reconocimiento se ejecuta localmente.
